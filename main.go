@@ -7,6 +7,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"log"
 	"os"
+	"sort"
 	"strings"
 )
 
@@ -54,23 +55,54 @@ func Status() error {
 		return err
 	}
 
-	parts := strings.SplitN(ref.Name().String(), "/", 3)
-	branch := parts[2]
-	stack := "fix123"
+	parts := strings.SplitN(ref.Name().String(), "/", 4)
 
+	var prefix string
+	var stack = "<< Undefined >>"
+	var branch string
+	if len(parts) > 3 {
+		stack = parts[2]
+		branch = strings.Join(parts[2:], "/")
+		prefix = strings.Join(parts[:3], "/")
+	} else {
+		branch = parts[2]
+	}
+	
 	iter, err := repo.Branches()
 	if err != nil {
 		log.Printf("call=Branches err=`%v`\n", err)
 		return err
 	}
 
-	iter.ForEach(func(reference *plumbing.Reference) error {
-		reference.Target().IsBranch()
-		fmt.Println(reference.Target().IsBranch(), reference.Type(), reference.Name())
-		return nil
-	})
+	var stackBranches []string
+	if prefix != "" {
+		iter.ForEach(func(reference *plumbing.Reference) error {
+			if strings.HasPrefix(reference.Name().String(), prefix) {
+				stackBranches = append(stackBranches, reference.Name().String())
+			}
+			return nil
+		})
+	}
+
+	sort.Strings(stackBranches)
 
 	fmt.Printf(`In stack %s
+On branch %s
+
+Stack:
+`, stack, branch)
+	for _, b := range stackBranches {
+		var token = " "
+		if ref.Name().String() == b {
+			token = "*"
+		}
+		fmt.Printf("  %s %s\n", token, b)
+	}
+
+	return nil
+}
+
+var example = `In stack %s
 On branch %s
 
 Stack:
@@ -78,10 +110,7 @@ Stack:
   * 002_api         ✅ https://github.com/nfisher/gitit/pulls/110781
     003_ui          ❌ https://github.com/nfisher/gitit/pulls/110779
 
-`, stack, branch)
-
-	return nil
-}
+`
 
 func main() {
 	Execute()

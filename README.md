@@ -1,2 +1,3 @@
-# gitit
-Stacked commits and stuff
+# GitIt
+
+Stacked commits and stuff.

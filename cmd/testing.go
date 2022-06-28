@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"os"
 	"testing"
 )
@@ -71,7 +72,9 @@ func InitialCommit(t *testing.T, repo *git.Repository) {
 	if err != nil {
 		t.Fatalf("call=Add err=`%v`\n", err)
 	}
-	_, err = wt.Commit("Add hello.txt", &git.CommitOptions{})
+	_, err = wt.Commit("Add hello.txt", &git.CommitOptions{
+		Author: &object.Signature{Email: "n@fisher.com", Name: "N Fisher"},
+	})
 	if err != nil {
 		t.Fatalf("call=Commit err=`%v`\n", err)
 	}

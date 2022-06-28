@@ -13,18 +13,19 @@ import (
 
 func Execute() {
 	status := flag.NewFlagSet("status", flag.ExitOnError)
-
-	cmds := []*flag.FlagSet{status}
-
-	var subcmd string
+	flags := []*flag.FlagSet{
+		status,
+	}
 	flag.Parse()
+
 	arg1 := flag.Arg(0)
 
-	for _, f := range cmds {
+	var sub string
+	for _, f := range flags {
 		if arg1 != f.Name() {
 			continue
 		}
-		subcmd = arg1
+		sub = arg1
 
 		err := f.Parse(flag.Args())
 		if err != nil {
@@ -33,11 +34,17 @@ func Execute() {
 		}
 	}
 
-	switch subcmd {
+	var err error
+	switch sub {
 	case "status":
-		Status()
+		err = Status()
 	default:
-		fmt.Printf("subcmd=%s err=`Unknown subcommand`\n", subcmd)
+		fmt.Printf("sub=%s err=`Unknown subcommand`\n", sub)
+		os.Exit(1)
+	}
+
+	if err != nil {
+		fmt.Printf("sub=%s err=`%v`\n", sub, err)
 		os.Exit(1)
 	}
 }
@@ -67,7 +74,7 @@ func Status() error {
 	} else {
 		branch = parts[2]
 	}
-	
+
 	iter, err := repo.Branches()
 	if err != nil {
 		log.Printf("call=Branches err=`%v`\n", err)
@@ -76,12 +83,15 @@ func Status() error {
 
 	var stackBranches []string
 	if prefix != "" {
-		iter.ForEach(func(reference *plumbing.Reference) error {
+		err := iter.ForEach(func(reference *plumbing.Reference) error {
 			if strings.HasPrefix(reference.Name().String(), prefix) {
 				stackBranches = append(stackBranches, reference.Name().String())
 			}
 			return nil
 		})
+		if err != nil {
+			log.Printf("call=iter.ForEach err=`%v`\n", err)
+		}
 	}
 
 	sort.Strings(stackBranches)

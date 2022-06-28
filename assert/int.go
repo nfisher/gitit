@@ -14,6 +14,6 @@ type integer struct {
 func (i *integer) Equals(b int) {
 	if i.a != b {
 		i.t.Helper()
-		i.t.Errorf("expected %v, got %v\n", b, i.a)
+		i.t.Errorf("want %v, got %v\n", b, i.a)
 	}
 }

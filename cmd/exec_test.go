@@ -1,68 +1,92 @@
 package cmd_test
 
 import (
-	"github.com/go-git/go-git/v5"
+	"bytes"
 	"github.com/nfisher/gitit/assert"
 	. "github.com/nfisher/gitit/cmd"
 	"io"
-	"os"
 	"testing"
 )
 
 func Test_no_args_returns_missing_subcommand(t *testing.T) {
 	i := Exec(Flags{}, io.Discard)
-	assert.Int(t, i).Equals(MissingSubCommand)
+	assert.Int(t, i).Equals(ErrMissingSubCommand)
 }
 
 func Test_checkout_returns_success_with_branch_id(t *testing.T) {
-	i := Exec(Flags{SubCommand: Checkout, BranchName: "001"}, io.Discard)
+	i := Exec(Flags{SubCommand: "checkout", BranchName: "001"}, io.Discard)
 	assert.Int(t, i).Equals(Success)
 }
 
 func Test_checkout_returns_missing_args_with_no_branch_id(t *testing.T) {
-	i := Exec(Flags{SubCommand: Checkout}, io.Discard)
-	assert.Int(t, i).Equals(MissingArguments)
+	i := Exec(Flags{SubCommand: "checkout"}, io.Discard)
+	assert.Int(t, i).Equals(ErrMissingArguments)
 }
 
 func Test_init_returns_missing_arguments_without_branch_arg(t *testing.T) {
-	i := Exec(Flags{SubCommand: Init}, io.Discard)
-	assert.Int(t, i).Equals(MissingArguments)
+	i := Exec(Flags{SubCommand: "init"}, io.Discard)
+	assert.Int(t, i).Equals(ErrMissingArguments)
 }
 
 func Test_init_returns_success_with_branch(t *testing.T) {
-	i := Exec(Flags{SubCommand: Init, BranchName: "123/migration"}, io.Discard)
+	i := Exec(Flags{SubCommand: "init", BranchName: "123/migration"}, io.Discard)
 	assert.Int(t, i).Equals(Success)
 }
 
 func Test_push_returns_success(t *testing.T) {
-	i := Exec(Flags{SubCommand: Push}, io.Discard)
+	i := Exec(Flags{SubCommand: "push"}, io.Discard)
 	assert.Int(t, i).Equals(Success)
 }
 
 func Test_rebase_returns_success(t *testing.T) {
-	i := Exec(Flags{SubCommand: Rebase}, io.Discard)
+	i := Exec(Flags{SubCommand: "rebase"}, io.Discard)
 	assert.Int(t, i).Equals(Success)
 }
 
 func Test_squash_returns_success(t *testing.T) {
-	i := Exec(Flags{SubCommand: Squash}, io.Discard)
+	i := Exec(Flags{SubCommand: "squash"}, io.Discard)
 	assert.Int(t, i).Equals(Success)
 }
 
-func Test_status_returns_success(t *testing.T) {
-	i := Exec(Flags{SubCommand: Status}, io.Discard)
+const simpleBranch = `Not in a stack
+On branch master
+`
+
+func Test_status_on_branch_returns_success(t *testing.T) {
+	repo, repoclose := CreateRepo(t)
+	defer repoclose()
+	InitialCommit(t, repo)
+
+	var buf bytes.Buffer
+	i := Exec(Flags{SubCommand: "status"}, &buf)
 	assert.Int(t, i).Equals(Success)
+	assert.String(t, string(buf.Bytes())).Equals(simpleBranch)
 }
 
-func CreateRepo(t *testing.T) (*git.Repository, func()) {
-	t.Helper()
-	dir := t.TempDir()
-	repo, err := git.PlainInit(dir, false)
-	if err != nil {
-		t.Errorf("call=PlainInit err=`%v`\n", err)
-	}
+const smallStack = `In stack kb1234
+On branch kb1234/003_ui
 
-	return repo, func() {
-		os.RemoveAll(dir)
-	}
+Stack:
+    001_migration
+  * 002_api
+    003_ui
+`
+
+func Test_status_on_stack_returns_success(t *testing.T) {
+	t.Skip("WIP")
+	_, repoclose := CreateRepo(t)
+	defer repoclose()
+
+	var buf bytes.Buffer
+	i := Exec(Flags{SubCommand: "status"}, &buf)
+	assert.Int(t, i).Equals(Success)
+	assert.String(t, string(buf.Bytes())).Equals(smallStack)
+}
+
+func Test_status_returns_not_repository_with_empty_directory(t *testing.T) {
+	tdclose := CreateBareDir(t)
+	defer tdclose()
+
+	i := Exec(Flags{SubCommand: "status"}, io.Discard)
+	assert.Int(t, i).Equals(ErrNotRepository)
 }

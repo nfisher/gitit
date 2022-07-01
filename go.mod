@@ -2,7 +2,10 @@ module github.com/nfisher/gitit
 
 go 1.18
 
-require github.com/go-git/go-git/v5 v5.4.2
+require (
+	github.com/go-git/go-git/v5 v5.4.2
+	github.com/google/go-cmp v0.3.0
+)
 
 require (
 	github.com/Microsoft/go-winio v0.4.16 // indirect

@@ -1,6 +1,7 @@
 package assert
 
 import "testing"
+import "github.com/google/go-cmp/cmp"
 
 func String(t *testing.T, s string) *str {
 	return &str{t, s}
@@ -13,8 +14,7 @@ type str struct {
 
 func (s *str) Equals(b string) {
 	s.t.Helper()
-	if s.a != b {
-		s.t.Helper()
-		s.t.Errorf("want `%s`, got `%s`\n", b, s.a)
+	if diff := cmp.Diff(b, s.a); diff != "" {
+		s.t.Error("mismatch (-want +got):\n", diff)
 	}
 }

@@ -2,11 +2,14 @@ package cmd_test
 
 import (
 	"bytes"
+	"flag"
 	"github.com/nfisher/gitit/assert"
 	. "github.com/nfisher/gitit/cmd"
 	"io"
 	"testing"
 )
+
+var runWip = flag.Bool("runwip", false, "Run WIP tests")
 
 func Test_no_args_returns_missing_subcommand(t *testing.T) {
 	i := Exec(Flags{}, io.Discard)
@@ -67,15 +70,28 @@ const smallStack = `In stack kb1234
 On branch kb1234/003_ui
 
 Stack:
-    001_migration
-  * 002_api
+    001_docs
+    002_api
     003_ui
 `
 
 func Test_status_on_stack_returns_success(t *testing.T) {
-	t.Skip("WIP")
-	_, repoclose := CreateRepo(t)
+	repo, repoclose := CreateRepo(t)
 	defer repoclose()
+
+	InitialCommit(t, repo)
+	wt, err := repo.Worktree()
+	if err != nil {
+		t.Errorf("call=WorkTree err=`%v`", err)
+	}
+	InitStack(t, repo, "kb3456", "001_migration")
+	Commit(t, wt, map[string]string{"001_create.sql": "SELECT 1;"}, "Add 001_create.sql")
+	InitStack(t, repo, "kb1234", "001_docs")
+	Commit(t, wt, map[string]string{"README.md": "Hello world"}, "Add README.md")
+	Branch(t, repo, "kb1234", "002_api")
+	Commit(t, wt, map[string]string{"api.js": "function api() {}"}, "Add api.js")
+	Branch(t, repo, "kb1234", "003_ui")
+	Commit(t, wt, map[string]string{"ui.js": "function ui() {}"}, "Add ui.js")
 
 	var buf bytes.Buffer
 	i := Exec(Flags{SubCommand: "status"}, &buf)

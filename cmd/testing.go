@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"os"
 	"testing"
@@ -52,30 +54,75 @@ func CreateRepo(t *testing.T) (*git.Repository, func()) {
 	}
 }
 
-func InitialCommit(t *testing.T, repo *git.Repository) {
-	w, err := os.Create("hello.txt")
+func Commit(t *testing.T, wt *git.Worktree, files map[string]string, msg string) {
+	t.Helper()
+	for n, c := range files {
+		AddFile(t, wt, n, c)
+	}
+
+	_, err := wt.Commit(msg, &git.CommitOptions{
+		Author: &object.Signature{Email: "nate@fisher.com", Name: "Nate Fisher"},
+	})
+	if err != nil {
+		t.Fatalf("call=Commit err=`%v`\n", err)
+	}
+}
+
+func AddFile(t *testing.T, wt *git.Worktree, filename, contents string) {
+	t.Helper()
+	w, err := os.Create(filename)
 	if err != nil {
 		t.Fatalf("call=os.Create err=`%v`\n", err)
 	}
 	defer w.Close()
 
-	_, err = w.WriteString("hello")
+	_, err = w.WriteString(contents)
 	if err != nil {
 		t.Fatalf("call=w.WriteString err=`%v`\n", err)
 	}
 
+	_, err = wt.Add(filename)
+	if err != nil {
+		t.Fatalf("call=Add err=`%v`\n", err)
+	}
+}
+
+func InitialCommit(t *testing.T, repo *git.Repository) {
+	t.Helper()
 	wt, err := repo.Worktree()
 	if err != nil {
 		t.Fatalf("call=CreateBranch err=`%v`\n", err)
 	}
-	_, err = wt.Add("hello.txt")
+
+	Commit(t, wt, map[string]string{
+		".gitignore": "*.sw?",
+	}, "Add .gitignore")
+}
+
+func Branch(t *testing.T, repo *git.Repository, stack, branch string) {
+	t.Helper()
+	name := fmt.Sprintf("%s/%s", stack, branch)
+	wt, err := repo.Worktree()
 	if err != nil {
-		t.Fatalf("call=Add err=`%v`\n", err)
+		t.Fatalf("call=Worktree err=`%v`\n", err)
 	}
-	_, err = wt.Commit("Add hello.txt", &git.CommitOptions{
-		Author: &object.Signature{Email: "n@fisher.com", Name: "N Fisher"},
+
+	err = wt.Checkout(&git.CheckoutOptions{
+		Branch: plumbing.NewBranchReferenceName(name),
+		Create: true,
 	})
 	if err != nil {
-		t.Fatalf("call=Commit err=`%v`\n", err)
+		t.Fatalf("call=Checkout err=`%v`\n", err)
+	}
+}
+
+func InitStack(t *testing.T, repo *git.Repository, stack, branch string) {
+	t.Helper()
+	Branch(t, repo, stack, branch)
+}
+
+func SkipWIP(t *testing.T, runWip bool) {
+	if !runWip {
+		t.Skip("WIP")
 	}
 }

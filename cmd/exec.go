@@ -28,6 +28,11 @@ const (
 	ErrOutputWriter
 )
 
+const (
+	stackBranch = 3
+	stackName   = 2
+)
+
 func Exec(input Flags, w io.Writer) int {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	switch input.SubCommand {
@@ -110,12 +115,12 @@ func Checkout(input Flags) int {
 		log.Printf("call=Branches err=`%v`\n", err)
 		return ErrOutputWriter
 	}
-	var a []string
+	var target = ""
 	err = iter.ForEach(func(reference *plumbing.Reference) error {
 		s := reference.Name().String()
 		p := strings.Split(s, "/")
-		if len(p) == 4 && p[2] == parts[2] {
-			a = append(a, p[3])
+		if len(p) == 4 && p[stackName] == parts[stackName] && strings.HasPrefix(p[stackBranch], input.BranchName) {
+			target = strings.Join(p[stackName:], "/")
 		}
 		return nil
 	})
@@ -123,7 +128,23 @@ func Checkout(input Flags) int {
 		log.Printf("call=Branches err=`%v`\n", err)
 		return ErrOutputWriter
 	}
-	sort.Strings(a)
+
+	if target == "" {
+		log.Printf("call=ForEach err=`%v not found`\n", input.BranchName)
+		return ErrUnknownBranch
+	}
+
+	wt, err := repo.Worktree()
+	if err != nil {
+		log.Printf("call=WorkTree err=`%v`\n", err)
+		return ErrNotRepository
+	}
+
+	err = wt.Checkout(&git.CheckoutOptions{Branch: plumbing.NewBranchReferenceName(target), Keep: true})
+	if err != nil {
+		log.Printf("call=Checkout err=`%v`\n", err)
+		return ErrUnknownBranch
+	}
 
 	return Success
 }

@@ -135,3 +135,16 @@ func SkipWIP(t *testing.T, runWip bool) {
 		t.Skip("WIP")
 	}
 }
+
+func CreateThreeLayerStack(t *testing.T, repo *git.Repository) {
+	wt := WorkTree(t, repo)
+	InitialCommit(t, repo)
+	InitStack(t, repo, "kb3456", "001_migration")
+	Commit(t, wt, map[string]string{"001_create.sql": "SELECT 1;"}, "Add 001_create.sql")
+	InitStack(t, repo, "kb1234", "001_docs")
+	Commit(t, wt, map[string]string{"README.md": "Hello world"}, "Add README.md")
+	Branch(t, repo, "kb1234", "002_api")
+	Commit(t, wt, map[string]string{"api.js": "function api() {}"}, "Add api.js")
+	Branch(t, repo, "kb1234", "003_ui")
+	Commit(t, wt, map[string]string{"ui.js": "function ui() {}"}, "Add ui.js")
+}

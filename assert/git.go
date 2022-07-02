@@ -2,6 +2,7 @@ package assert
 
 import (
 	"github.com/go-git/go-git/v5"
+	"strings"
 	"testing"
 )
 
@@ -21,8 +22,8 @@ func (gr *gitrepo) Branch(b string) {
 		gr.t.Fatalf("call=Head err=`%v`\n", err)
 	}
 
-	a := head.Name().String()
-	if a != "refs/heads/"+b {
+	a := strings.Replace(head.Name().String(), "refs/heads/", "", 1)
+	if a != b {
 		gr.t.Fatalf("want %v, got %v\n", b, a)
 	}
 }

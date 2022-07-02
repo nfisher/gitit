@@ -7,17 +7,26 @@ import (
 	"testing"
 )
 
+func Test_checkout_returns_unknown_branch_with_absent_branch_id(t *testing.T) {
+	repo, repoclose := CreateRepo(t)
+	defer repoclose()
+
+	CreateThreeLayerStack(t, repo)
+
+	i := Exec(Flags{SubCommand: "checkout", BranchName: "004"}, io.Discard)
+	assert.Int(t, i).Equals(ErrUnknownBranch)
+	assert.Repo(t, repo).Branch("kb1234/003_ui")
+}
+
 func Test_checkout_returns_success_with_known_branch_id(t *testing.T) {
 	repo, repoclose := CreateRepo(t)
 	defer repoclose()
 
-	InitialCommit(t, repo)
-	InitStack(t, repo, "kb3456", "001_migration")
-	wt := WorkTree(t, repo)
-	Commit(t, wt, map[string]string{"001_create.sql": "SELECT 1;"}, "Add 001_create.sql")
+	CreateThreeLayerStack(t, repo)
 
 	i := Exec(Flags{SubCommand: "checkout", BranchName: "001"}, io.Discard)
 	assert.Int(t, i).Equals(Success)
+	assert.Repo(t, repo).Branch("kb1234/001_docs")
 }
 
 func Test_checkout_returns_not_found_with_invalid_stack(t *testing.T) {
@@ -27,6 +36,7 @@ func Test_checkout_returns_not_found_with_invalid_stack(t *testing.T) {
 	InitialCommit(t, repo)
 	i := Exec(Flags{SubCommand: "checkout", BranchName: "002"}, io.Discard)
 	assert.Int(t, i).Equals(ErrInvalidStack)
+	assert.Repo(t, repo).Branch("master")
 }
 
 func Test_checkout_returns_missing_args_with_no_branch_id(t *testing.T) {

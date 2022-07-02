@@ -43,15 +43,15 @@ jobs:
           asset_name: git-stack.exe
           asset_content_type: application/octet-stream
 
-      - name: Upload Release git-stack.amd64
+      - name: Upload Release git-stack.linux64
         id: upload-release-asset-amd64
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path: ./git-stack.amd64
-          asset_name: git-stack.amd64
+          asset_path: ./git-stack.linux64
+          asset_name: git-stack.linux64
           asset_content_type: application/octet-stream
 
       - name: Upload Release git-stack.darwin64

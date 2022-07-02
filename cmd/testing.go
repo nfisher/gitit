@@ -9,6 +9,15 @@ import (
 	"testing"
 )
 
+func WorkTree(t *testing.T, repo *git.Repository) *git.Worktree {
+	t.Helper()
+	wt, err := repo.Worktree()
+	if err != nil {
+		t.Fatalf("call=WorkTree err=`%v`", err)
+	}
+	return wt
+}
+
 func CreateBareDir(t *testing.T) func() {
 	t.Helper()
 

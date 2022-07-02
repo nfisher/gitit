@@ -2,14 +2,9 @@ ignore:
   - index_gen.go
 
 coverage:
-  status:
-    project:
-      default:
-        target: 55%
-        threshold: 5%
-        base: auto
-        flags:
-          - unit
+  range: 70..100
+  round: down
+  precision: 2
 
 comment:
   layout: "reach, diff, flags, files"
@@ -18,4 +13,4 @@ comment:
   require_base: no        # [yes :: must have a base report to post]
   require_head: no       # [yes :: must have a head report to post]
   branches:               # branch names that can post comment
-    - "master"
+    - "main"

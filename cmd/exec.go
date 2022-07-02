@@ -71,10 +71,9 @@ func Branch(input Flags) int {
 		return ErrMissingArguments
 	}
 
-	repo, err := git.PlainOpenWithOptions(".", &git.PlainOpenOptions{DetectDotGit: true})
-	if err == git.ErrRepositoryNotExists {
-		log.Printf("call=PlainOpen err=`%v`\n", err)
-		return ErrNotRepository
+	repo, wt, rc, err := openWorkTree()
+	if err != nil {
+		return rc
 	}
 
 	ref, err := repo.Head()
@@ -120,11 +119,6 @@ func Branch(input Flags) int {
 	}
 
 	name := fmt.Sprintf("%s/%03d_%s", parts[stackName], i+1, input.BranchName)
-	wt, err := repo.Worktree()
-	if err != nil {
-		log.Printf("call=Worktree err=`%v`\n", err)
-		return ErrNotRepository
-	}
 
 	err = wt.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.NewBranchReferenceName(name),
@@ -168,16 +162,9 @@ func Checkout(input Flags) int {
 		return ErrMissingArguments
 	}
 
-	repo, err := git.PlainOpenWithOptions(".", &git.PlainOpenOptions{DetectDotGit: true})
-	if err == git.ErrRepositoryNotExists {
-		log.Printf("call=PlainOpen err=`%v`\n", err)
-		return ErrNotRepository
-	}
-
-	wt, err := repo.Worktree()
+	repo, wt, rc, err := openWorkTree()
 	if err != nil {
-		log.Printf("call=WorkTree err=`%v`\n", err)
-		return ErrNotRepository
+		return rc
 	}
 
 	ref, err := repo.Head()
@@ -209,7 +196,7 @@ func Checkout(input Flags) int {
 		return nil
 	})
 	if err != nil {
-		log.Printf("call=Branches err=`%v`\n", err)
+		log.Printf("call=ForEach err=`%v`\n", err)
 		return ErrOutputWriter
 	}
 
@@ -227,21 +214,30 @@ func Checkout(input Flags) int {
 	return Success
 }
 
+func openWorkTree() (*git.Repository, *git.Worktree, int, error) {
+	repo, err := git.PlainOpenWithOptions(".", &git.PlainOpenOptions{DetectDotGit: true})
+	if err == git.ErrRepositoryNotExists {
+		log.Printf("call=PlainOpen err=`%v`\n", err)
+		return nil, nil, ErrNotRepository, nil
+	}
+
+	wt, err := repo.Worktree()
+	if err != nil {
+		log.Printf("call=WorkTree err=`%v`\n", err)
+		return nil, nil, ErrNotRepository, nil
+	}
+
+	return repo, wt, 0, err
+}
+
 func Init(input Flags) int {
 	if input.BranchName == "" {
 		return ErrMissingArguments
 	}
 
-	repo, err := git.PlainOpenWithOptions(".", &git.PlainOpenOptions{DetectDotGit: true})
-	if err == git.ErrRepositoryNotExists {
-		log.Printf("call=PlainOpen err=`%v`\n", err)
-		return ErrNotRepository
-	}
-
-	wt, err := repo.Worktree()
+	_, wt, rc, err := openWorkTree()
 	if err != nil {
-		log.Printf("call=Worktree err=`%v`\n", err)
-		return ErrNotRepository
+		return rc
 	}
 
 	parts := strings.Split(input.BranchName, "/")

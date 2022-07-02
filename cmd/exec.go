@@ -36,15 +36,6 @@ const (
 	stackName   = 2
 )
 
-type ErrWithCode struct {
-	err error
-	rc  int
-}
-
-func (e *ErrWithCode) Error() string {
-	return e.err.Error()
-}
-
 func Exec(input Flags, w io.Writer) int {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	switch input.SubCommand {

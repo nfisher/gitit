@@ -94,8 +94,7 @@ func Branch(input Flags) int {
 
 	var a []string
 	err = iter.ForEach(func(reference *plumbing.Reference) error {
-		s := reference.Name().String()
-		p := strings.Split(s, "/")
+		p := splitRef(reference)
 		if len(p) == 4 && p[stackName] == parts[stackName] {
 			a = append(a, p[stackBranch])
 		}
@@ -126,6 +125,11 @@ func Branch(input Flags) int {
 	}
 
 	return Success
+}
+
+func splitRef(reference *plumbing.Reference) []string {
+	s := reference.Name().String()
+	return strings.Split(s, "/")
 }
 
 func usage(w io.Writer) {
@@ -179,8 +183,7 @@ func Checkout(input Flags) int {
 	}
 	var target = ""
 	err = iter.ForEach(func(reference *plumbing.Reference) error {
-		s := reference.Name().String()
-		p := strings.Split(s, "/")
+		p := splitRef(reference)
 		if len(p) == 4 && p[stackName] == parts[stackName] && strings.HasPrefix(p[stackBranch], input.BranchName) {
 			target = strings.Join(p[stackName:], "/")
 		}
@@ -212,10 +215,7 @@ func headParts(repo *git.Repository) ([]string, error) {
 		log.Printf("call=Head err=`%v`\n", err)
 		return nil, err
 	}
-
-	headName := ref.Name().String()
-	parts := strings.Split(headName, "/")
-	return parts, nil
+	return splitRef(ref), nil
 }
 
 func openWorkTree() (*git.Repository, *git.Worktree, error) {
@@ -288,9 +288,8 @@ func Status(_ Flags, w io.Writer) int {
 		}
 		var a []string
 		err = iter.ForEach(func(reference *plumbing.Reference) error {
-			s := reference.Name().String()
-			p := strings.Split(s, "/")
-			if len(p) == 4 && p[2] == parts[2] {
+			p := splitRef(reference)
+			if isCurrentStack(p, parts) {
 				a = append(a, p[3])
 			}
 			return nil
@@ -322,6 +321,10 @@ func Status(_ Flags, w io.Writer) int {
 	}
 
 	return Success
+}
+
+func isCurrentStack(p []string, cur []string) bool {
+	return len(p) == 4 && p[stackName] == cur[stackName]
 }
 
 var stackTpl = template.Must(template.New("stack").Parse(`In stack {{ .Name }}

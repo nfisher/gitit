@@ -12,8 +12,8 @@ type integer struct {
 }
 
 func (i *integer) Equals(b int) {
+	i.t.Helper()
 	if i.a != b {
-		i.t.Helper()
 		i.t.Errorf("want %v, got %v\n", b, i.a)
 	}
 }

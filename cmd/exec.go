@@ -21,6 +21,7 @@ const (
 	ErrHead
 	ErrMissingArguments
 	ErrMissingSubCommand
+	ErrInvalidArgument
 	ErrNotRepository
 	ErrOutputWriter
 )
@@ -46,8 +47,22 @@ func Exec(input Flags, w io.Writer) int {
 		return Status(input, w)
 
 	default:
+		usage(w)
 		return ErrMissingSubCommand
 	}
+}
+
+func usage(w io.Writer) {
+	w.Write([]byte(`usage: git stack <command> [<name>]
+
+These are common Stack commands used in various situations:
+
+start a new stack
+   init       Create a new stack
+
+examine the state
+   status     Show the stack status
+`))
 }
 
 func Squash(_ Flags) int {
@@ -73,6 +88,34 @@ func Init(input Flags) int {
 	if input.BranchName == "" {
 		return ErrMissingArguments
 	}
+
+	repo, err := git.PlainOpenWithOptions(".", &git.PlainOpenOptions{DetectDotGit: true})
+	if err == git.ErrRepositoryNotExists {
+		log.Printf("call=PlainOpen err=`%v`\n", err)
+		return ErrNotRepository
+	}
+
+	parts := strings.Split(input.BranchName, "/")
+	if len(parts) != 2 {
+		log.Printf("call=Split err=`%v`\n", err)
+		return ErrInvalidArgument
+	}
+	name := fmt.Sprintf("%s/%03d_%s", parts[0], 1, parts[1])
+
+	wt, err := repo.Worktree()
+	if err != nil {
+		log.Printf("call=Worktree err=`%v`\n", err)
+		return ErrNotRepository
+	}
+
+	err = wt.Checkout(&git.CheckoutOptions{
+		Branch: plumbing.NewBranchReferenceName(name),
+		Create: true,
+	})
+	if err != nil {
+		log.Printf("call=Checkout err=`%v`\n", err)
+		return ErrNotRepository
+	}
 	return Success
 }
 
@@ -84,7 +127,6 @@ type Stack struct {
 
 func Status(_ Flags, w io.Writer) int {
 	repo, err := git.PlainOpenWithOptions(".", &git.PlainOpenOptions{DetectDotGit: true})
-
 	if err == git.ErrRepositoryNotExists {
 		log.Printf("call=PlainOpen err=`%v`\n", err)
 		return ErrNotRepository

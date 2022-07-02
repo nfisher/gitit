@@ -12,6 +12,14 @@ func Test_init_returns_missing_arguments_without_branch_arg(t *testing.T) {
 	assert.Int(t, i).Equals(ErrMissingArguments)
 }
 
+func Test_init_outside_repo_should_fail(t *testing.T) {
+	tdclose := CreateBareDir(t)
+	defer tdclose()
+
+	i := Exec(Flags{SubCommand: "init", BranchName: "123/migration"}, io.Discard)
+	assert.Int(t, i).Equals(ErrNotRepository)
+}
+
 func Test_init_returns_success_with_branch_specified(t *testing.T) {
 	repo, repoclose := CreateRepo(t)
 	defer repoclose()

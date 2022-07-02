@@ -7,6 +7,14 @@ import (
 	"testing"
 )
 
+func Test_branch_outside_repo_should_fail(t *testing.T) {
+	tdclose := CreateBareDir(t)
+	defer tdclose()
+
+	i := Exec(Flags{SubCommand: "branch", BranchName: "ml_fairy"}, io.Discard)
+	assert.Int(t, i).Equals(ErrNotRepository)
+}
+
 func Test_branch_on_existing_stack_returns_success(t *testing.T) {
 	repo, repoclose := CreateRepo(t)
 	defer repoclose()

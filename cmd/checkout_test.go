@@ -7,6 +7,14 @@ import (
 	"testing"
 )
 
+func Test_checkout_outside_repo_should_fail(t *testing.T) {
+	tdclose := CreateBareDir(t)
+	defer tdclose()
+
+	i := Exec(Flags{SubCommand: "checkout", BranchName: "001"}, io.Discard)
+	assert.Int(t, i).Equals(ErrNotRepository)
+}
+
 func Test_checkout_returns_unknown_branch_with_absent_branch_id(t *testing.T) {
 	repo, repoclose := CreateRepo(t)
 	defer repoclose()

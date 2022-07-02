@@ -115,6 +115,7 @@ func Branch(input Flags) int {
 	last := a[len(a)-1][:3]
 	i, err := strconv.Atoi(last)
 	if err != nil {
+		log.Printf("call=Atoi err=`%v`\n", err)
 		return ErrInvalidSequence
 	}
 
@@ -173,6 +174,12 @@ func Checkout(input Flags) int {
 		return ErrNotRepository
 	}
 
+	wt, err := repo.Worktree()
+	if err != nil {
+		log.Printf("call=WorkTree err=`%v`\n", err)
+		return ErrNotRepository
+	}
+
 	ref, err := repo.Head()
 	if err != nil {
 		// TODO: how do we get here? Detached head?
@@ -211,12 +218,6 @@ func Checkout(input Flags) int {
 		return ErrUnknownBranch
 	}
 
-	wt, err := repo.Worktree()
-	if err != nil {
-		log.Printf("call=WorkTree err=`%v`\n", err)
-		return ErrNotRepository
-	}
-
 	err = wt.Checkout(&git.CheckoutOptions{Branch: plumbing.NewBranchReferenceName(target), Keep: true})
 	if err != nil {
 		log.Printf("call=Checkout err=`%v`\n", err)
@@ -237,18 +238,18 @@ func Init(input Flags) int {
 		return ErrNotRepository
 	}
 
+	wt, err := repo.Worktree()
+	if err != nil {
+		log.Printf("call=Worktree err=`%v`\n", err)
+		return ErrNotRepository
+	}
+
 	parts := strings.Split(input.BranchName, "/")
 	if len(parts) != 2 {
 		log.Printf("call=Split err=`%v`\n", err)
 		return ErrInvalidArgument
 	}
 	name := fmt.Sprintf("%s/%03d_%s", parts[0], 1, parts[1])
-
-	wt, err := repo.Worktree()
-	if err != nil {
-		log.Printf("call=Worktree err=`%v`\n", err)
-		return ErrNotRepository
-	}
 
 	err = wt.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.NewBranchReferenceName(name),

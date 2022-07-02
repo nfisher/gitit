@@ -16,15 +16,21 @@ Initial [post](https://junctionbox.ca/2022/06/22/stacked-commits.html).
 * [x] Branch
 * [x] Checkout
 * [x] Init
-* [ ] Squash ?maybe, squash merges?
 * [x] Status
+
+### Maybe
+
+* [ ] Squash - racking squashed merges might be adequate.
 
 ## Remote Git
 
 * [ ] Pull
 * [ ] Push
-* [ ] Rebase ?maybe, pull might be adequate?
-* [x] Status
+* [ ] Status
+
+### Maybe
+
+* [ ] Rebase - pull might be adequate.
 
 ## PR Integration
 

@@ -1,0 +1,4 @@
+GOOS=linux GOARCH=amd64 go build -v -o git-stack.linux64
+GOOS=darwin GOARCH=amd64 go build -v -o git-stack.darwin64
+GOOS=darwin GOARCH=arm64 go build -v -o git-stack.darwinarm
+GOOS=windows GOARCH=amd64 go build -v -o git-stack.exe

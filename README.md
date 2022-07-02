@@ -8,7 +8,7 @@ Initial [post](https://junctionbox.ca/2022/06/22/stacked-commits.html).
 
 ## Local Git
 
-* [ ] Branch
+* [x] Branch
 * [x] Checkout
 * [x] Init
 * [ ] Squash ?maybe, squash merges?

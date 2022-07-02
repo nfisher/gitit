@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -26,6 +27,8 @@ const (
 	ErrUnknownBranch
 	ErrNotRepository
 	ErrOutputWriter
+	ErrInvalidSequence
+	ErrCreatingBranch
 )
 
 const (
@@ -36,6 +39,9 @@ const (
 func Exec(input Flags, w io.Writer) int {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	switch input.SubCommand {
+	case "branch":
+		return Branch(input)
+
 	case "checkout":
 		return Checkout(input)
 
@@ -58,6 +64,77 @@ func Exec(input Flags, w io.Writer) int {
 		usage(w)
 		return ErrMissingSubCommand
 	}
+}
+
+func Branch(input Flags) int {
+	if input.BranchName == "" {
+		return ErrMissingArguments
+	}
+
+	repo, err := git.PlainOpenWithOptions(".", &git.PlainOpenOptions{DetectDotGit: true})
+	if err == git.ErrRepositoryNotExists {
+		log.Printf("call=PlainOpen err=`%v`\n", err)
+		return ErrNotRepository
+	}
+
+	ref, err := repo.Head()
+	if err != nil {
+		// TODO: how do we get here? Detached head?
+		log.Printf("call=Head err=`%v`\n", err)
+		return ErrHead
+	}
+
+	branchName := ref.Name().String()
+	parts := strings.Split(branchName, "/")
+	if len(parts) != 4 {
+		log.Printf("call=Split err=`want 4 parts, got %d`\n", len(parts))
+		return ErrInvalidStack
+	}
+
+	iter, err := repo.Branches()
+	if err != nil {
+		log.Printf("call=Branches err=`%v`\n", err)
+		return ErrOutputWriter
+	}
+
+	var a []string
+	err = iter.ForEach(func(reference *plumbing.Reference) error {
+		s := reference.Name().String()
+		p := strings.Split(s, "/")
+		if len(p) == 4 && p[stackName] == parts[stackName] {
+			a = append(a, p[stackBranch])
+		}
+		return nil
+	})
+	if err != nil {
+		log.Printf("call=Branches err=`%v`\n", err)
+		return ErrOutputWriter
+	}
+	sort.Strings(a)
+
+	last := a[len(a)-1][:3]
+	i, err := strconv.Atoi(last)
+	if err != nil {
+		return ErrInvalidSequence
+	}
+
+	name := fmt.Sprintf("%s/%03d_%s", parts[stackName], i+1, input.BranchName)
+	wt, err := repo.Worktree()
+	if err != nil {
+		log.Printf("call=Worktree err=`%v`\n", err)
+		return ErrNotRepository
+	}
+
+	err = wt.Checkout(&git.CheckoutOptions{
+		Branch: plumbing.NewBranchReferenceName(name),
+		Create: true,
+	})
+	if err != nil {
+		log.Printf("call=Checkout err=`%v`\n", err)
+		return ErrCreatingBranch
+	}
+
+	return Success
 }
 
 func usage(w io.Writer) {

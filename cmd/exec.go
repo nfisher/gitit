@@ -36,6 +36,15 @@ const (
 	stackName   = 2
 )
 
+type ErrWithCode struct {
+	err error
+	rc  int
+}
+
+func (e *ErrWithCode) Error() string {
+	return e.err.Error()
+}
+
 func Exec(input Flags, w io.Writer) int {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	switch input.SubCommand {
@@ -71,20 +80,16 @@ func Branch(input Flags) int {
 		return ErrMissingArguments
 	}
 
-	repo, wt, rc, err := openWorkTree()
+	repo, wt, err := openWorkTree()
 	if err != nil {
-		return rc
+		return ErrNotRepository
 	}
 
-	ref, err := repo.Head()
+	parts, err := headParts(repo)
 	if err != nil {
-		// TODO: how do we get here? Detached head?
-		log.Printf("call=Head err=`%v`\n", err)
 		return ErrHead
 	}
 
-	branchName := ref.Name().String()
-	parts := strings.Split(branchName, "/")
 	if len(parts) != 4 {
 		log.Printf("call=Split err=`want 4 parts, got %d`\n", len(parts))
 		return ErrInvalidStack
@@ -162,20 +167,15 @@ func Checkout(input Flags) int {
 		return ErrMissingArguments
 	}
 
-	repo, wt, rc, err := openWorkTree()
+	repo, wt, err := openWorkTree()
 	if err != nil {
-		return rc
+		return ErrNotRepository
 	}
 
-	ref, err := repo.Head()
+	parts, err := headParts(repo)
 	if err != nil {
-		// TODO: how do we get here? Detached head?
-		log.Printf("call=Head err=`%v`\n", err)
 		return ErrHead
 	}
-
-	branchName := ref.Name().String()
-	parts := strings.Split(branchName, "/")
 	if len(parts) != 4 {
 		log.Printf("call=Split err=`want 4 parts, got %d`\n", len(parts))
 		return ErrInvalidStack
@@ -214,20 +214,33 @@ func Checkout(input Flags) int {
 	return Success
 }
 
-func openWorkTree() (*git.Repository, *git.Worktree, int, error) {
+func headParts(repo *git.Repository) ([]string, error) {
+	ref, err := repo.Head()
+	if err != nil {
+		// TODO: how do we get here? Detached head?
+		log.Printf("call=Head err=`%v`\n", err)
+		return nil, err
+	}
+
+	headName := ref.Name().String()
+	parts := strings.Split(headName, "/")
+	return parts, nil
+}
+
+func openWorkTree() (*git.Repository, *git.Worktree, error) {
 	repo, err := git.PlainOpenWithOptions(".", &git.PlainOpenOptions{DetectDotGit: true})
 	if err == git.ErrRepositoryNotExists {
 		log.Printf("call=PlainOpen err=`%v`\n", err)
-		return nil, nil, ErrNotRepository, err
+		return nil, nil, err
 	}
 
 	wt, err := repo.Worktree()
 	if err != nil {
 		log.Printf("call=WorkTree err=`%v`\n", err)
-		return nil, nil, ErrNotRepository, err
+		return nil, nil, err
 	}
 
-	return repo, wt, 0, err
+	return repo, wt, nil
 }
 
 func Init(input Flags) int {
@@ -235,9 +248,9 @@ func Init(input Flags) int {
 		return ErrMissingArguments
 	}
 
-	_, wt, rc, err := openWorkTree()
+	_, wt, err := openWorkTree()
 	if err != nil {
-		return rc
+		return ErrNotRepository
 	}
 
 	parts := strings.Split(input.BranchName, "/")
@@ -271,15 +284,11 @@ func Status(_ Flags, w io.Writer) int {
 		return ErrNotRepository
 	}
 
-	ref, err := repo.Head()
+	parts, err := headParts(repo)
 	if err != nil {
-		// TODO: how do we get here? Detached head?
-		log.Printf("call=Head err=`%v`\n", err)
 		return ErrHead
 	}
 
-	branchName := ref.Name().String()
-	parts := strings.Split(branchName, "/")
 	if len(parts) == 4 {
 		iter, err := repo.Branches()
 		if err != nil {

@@ -1,0 +1,3 @@
+#!/bin/bash -eu
+
+go test -v -cover -covermode atomic -coverprofile cover.out ./...

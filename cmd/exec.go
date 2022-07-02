@@ -218,13 +218,13 @@ func openWorkTree() (*git.Repository, *git.Worktree, int, error) {
 	repo, err := git.PlainOpenWithOptions(".", &git.PlainOpenOptions{DetectDotGit: true})
 	if err == git.ErrRepositoryNotExists {
 		log.Printf("call=PlainOpen err=`%v`\n", err)
-		return nil, nil, ErrNotRepository, nil
+		return nil, nil, ErrNotRepository, err
 	}
 
 	wt, err := repo.Worktree()
 	if err != nil {
 		log.Printf("call=WorkTree err=`%v`\n", err)
-		return nil, nil, ErrNotRepository, nil
+		return nil, nil, ErrNotRepository, err
 	}
 
 	return repo, wt, 0, err

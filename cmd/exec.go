@@ -3,10 +3,12 @@ package cmd
 import (
 	"fmt"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"html/template"
 	"io"
 	"log"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -29,11 +31,12 @@ const (
 	ErrOutputWriter
 	ErrInvalidSequence
 	ErrCreatingBranch
+	ErrPushingStack
 )
 
 const (
-	stackBranch = 3
 	stackName   = 2
+	stackBranch = 3
 )
 
 func Exec(input Flags, w io.Writer) int {
@@ -154,6 +157,29 @@ func Rebase(_ Flags) int {
 }
 
 func Push(_ Flags) int {
+	repo, _, err := openWorkTree()
+	if err != nil {
+		return ErrNotRepository
+	}
+
+	parts, err := headParts(repo)
+	if err != nil {
+		return ErrHead
+	}
+	if len(parts) != 4 {
+		log.Printf("call=Split err=`want 4 parts, got %d`\n", len(parts))
+		return ErrInvalidStack
+	}
+
+	spec := config.RefSpec(fmt.Sprintf("refs/head/%[1]s/*:refs/heads/%[1]s/*", parts[stackName]))
+	err = repo.Push(&git.PushOptions{
+		RemoteName: "origin",
+		Progress:   os.Stdout,
+		RefSpecs:   []config.RefSpec{spec},
+	})
+	if err != nil {
+		return ErrPushingStack
+	}
 	return Success
 }
 

@@ -218,16 +218,9 @@ func Push(_ Flags) int {
 		return ErrInvalidStack
 	}
 
-	origin, err := repo.Remote("origin")
-	if err != nil {
-		log.Printf("call=Remotes err=`%v`\n", err)
-		return ErrInvalidStack
-	}
-
 	spec := config.RefSpec(fmt.Sprintf("refs/heads/%[1]s/*:refs/heads/%[1]s/*", parts[stackName]))
-	err = origin.Push(&git.PushOptions{
+	err = repo.Push(&git.PushOptions{
 		Auth:       authcb,
-		Force:      true,
 		Progress:   os.Stdout,
 		RemoteName: "origin",
 		RefSpecs:   []config.RefSpec{spec},

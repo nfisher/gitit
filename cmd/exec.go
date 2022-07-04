@@ -5,6 +5,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"html/template"
 	"io"
@@ -204,10 +205,27 @@ func Push(_ Flags) int {
 		return ErrInvalidStack
 	}
 
-	authcb, err := ssh.NewSSHAgentAuth("git")
+	remotes, err := repo.Remotes()
 	if err != nil {
+		log.Printf("call=Remotes err=`%v`\n", err)
+		return ErrInvalidStack
+	}
+
+	if len(remotes) < 1 {
 		log.Printf("call=Split err=`want 4 parts, got %d`\n", len(parts))
 		return ErrInvalidStack
+	}
+
+	var authcb transport.AuthMethod
+	u := remotes[0].Config().URLs[0]
+	if strings.HasPrefix(u, "http://") {
+
+	} else {
+		authcb, err = ssh.NewSSHAgentAuth("git")
+		if err != nil {
+			log.Printf("call=NewSSHAgentAuth err=`%v`\n", err)
+			return ErrInvalidStack
+		}
 	}
 
 	spec := config.RefSpec(fmt.Sprintf("refs/heads/%[1]s/*:refs/heads/%[1]s/*", parts[stackName]))

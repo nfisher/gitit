@@ -16,6 +16,12 @@ func Test_no_args_returns_missing_subcommand(t *testing.T) {
 }
 
 func Test_push_returns_success(t *testing.T) {
+	SkipWIP(t, *runWip)
+	repo, repoclose := CreateRepo(t)
+	defer repoclose()
+
+	CreateThreeLayerStack(t, repo)
+
 	i := Exec(Flags{SubCommand: "push"}, io.Discard)
 	assert.Int(t, i).Equals(Success)
 }

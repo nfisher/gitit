@@ -44,11 +44,11 @@ func Test_init_returns_success_with_dirty_branch(t *testing.T) {
 	defer repoclose()
 
 	InitialCommit(t, repo)
-	CreateFile(t, "temp.txt", "temp file")
+	CreateFile(t, ".gitignore", "*.sw?\n.idea")
 
 	i := Exec(Flags{SubCommand: "init", BranchName: "123/migration"}, io.Discard)
 
 	assert.Int(t, i).Equals(Success)
 	assert.Repo(t, repo).Branch("123/001_migration")
-	assert.Exists(t, "temp.txt")
+	assert.Exists(t, ".gitignore")
 }

@@ -77,6 +77,20 @@ func Commit(t *testing.T, wt *git.Worktree, files map[string]string, msg string)
 	}
 }
 
+func CreateFile(t *testing.T, filename, contents string) {
+	t.Helper()
+	w, err := os.Create(filename)
+	if err != nil {
+		t.Fatalf("call=os.Create err=`%v`\n", err)
+	}
+	defer w.Close()
+
+	_, err = w.WriteString(contents)
+	if err != nil {
+		t.Fatalf("call=w.WriteString err=`%v`\n", err)
+	}
+}
+
 func AddFile(t *testing.T, wt *git.Worktree, filename, contents string) {
 	t.Helper()
 	w, err := os.Create(filename)

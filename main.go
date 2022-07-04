@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"github.com/nfisher/gitit/cmd"
 	"os"
 )
@@ -18,9 +17,14 @@ Stack:
 
 func main() {
 	var input cmd.Flags
-	flag.Parse()
 
-	input.SubCommand = flag.Arg(0)
+	if len(os.Args) > 1 {
+		input.SubCommand = os.Args[1]
+	}
+
+	if len(os.Args) > 2 {
+		input.BranchName = os.Args[2]
+	}
 
 	os.Exit(cmd.Exec(input, os.Stdout))
 }

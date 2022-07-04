@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -41,6 +42,7 @@ const (
 
 func Exec(input Flags, w io.Writer) int {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
 	switch input.SubCommand {
 	case "branch":
 		return Branch(input)
@@ -63,24 +65,49 @@ func Exec(input Flags, w io.Writer) int {
 	case "status":
 		return Status(input, w)
 
+	case "version":
+		return Version(w)
+
 	default:
 		usage(w)
 		return ErrMissingSubCommand
 	}
 }
 
+func Version(w io.Writer) int {
+	buildInfo, ok := debug.ReadBuildInfo()
+	if !ok {
+		os.Exit(1)
+	}
+	isDirty := false
+	rev := "devel"
+	for _, s := range buildInfo.Settings {
+		switch s.Key {
+		case "vcs.modified":
+			isDirty = s.Value == "true"
+		case "vcs.revision":
+			rev = s.Value
+		}
+	}
+	log.Printf("gitit@%v isDirty=%v\n", rev, isDirty)
+	return Success
+}
+
 func Branch(input Flags) int {
 	if input.BranchName == "" {
+		log.Printf("call=BranchName err=`branch name is empty, must be specified`\n")
 		return ErrMissingArguments
 	}
 
 	repo, wt, err := openWorkTree()
 	if err != nil {
+		log.Printf("call=openWorkTree err=`%v`\n", err)
 		return ErrNotRepository
 	}
 
 	parts, err := headParts(repo)
 	if err != nil {
+		log.Printf("call=headParts err=`%v`\n", err)
 		return ErrHead
 	}
 
@@ -127,6 +154,7 @@ func Branch(input Flags) int {
 		return ErrCreatingBranch
 	}
 
+	fmt.Println("Created branch", name)
 	return Success
 }
 
@@ -280,6 +308,7 @@ func Init(input Flags) int {
 	err = wt.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.NewBranchReferenceName(name),
 		Create: true,
+		Keep:   true,
 	})
 	if err != nil {
 		log.Printf("call=Checkout err=`%v`\n", err)

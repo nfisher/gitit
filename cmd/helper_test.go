@@ -1,11 +1,19 @@
 package cmd_test
 
 import (
+	"context"
 	"fmt"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"net"
+	"net/http"
+	"net/http/cgi"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -147,6 +155,80 @@ func InitStack(t *testing.T, repo *git.Repository, stack, branch string) {
 func SkipWIP(t *testing.T, runWip bool) {
 	if !runWip {
 		t.Skip("WIP")
+	}
+}
+
+type server struct {
+	Port int
+	Root string
+	Repo *git.Repository
+}
+
+func (s *server) Address() string {
+	return fmt.Sprintf("http://localhost:%d", s.Port)
+}
+
+func LaunchServer(t *testing.T) (*server, func()) {
+	// inspired by go-git tests.
+	l, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatalf("call=Listen err=`%v`\n", err)
+	}
+	d := t.TempDir()
+
+	cmd := exec.Command("git", "--exec-path")
+	b, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("call=CombinedOutput err=`%v`\n", err)
+	}
+
+	backend := filepath.Join(strings.TrimSpace(string(b)), "git-http-backend")
+
+	srv := http.Server{
+		Handler: &cgi.Handler{
+			Path: backend,
+			Env:  []string{"GIT_HTTP_EXPORT_ALL=true", fmt.Sprintf("GIT_PROJECT_ROOT=%s", d)},
+		},
+	}
+
+	repo, err := git.PlainInit(d, true)
+	if err != nil {
+		t.Fatalf("call=PlainInit err=`%v`\n", err)
+	}
+
+	err = os.WriteFile(filepath.Join(d, "config"), []byte(configContents), os.ModePerm)
+	if err != nil {
+		t.Fatalf("call=WriteFile err=`%v`\n", err)
+	}
+
+	s := &server{
+		Root: d,
+		Port: l.Addr().(*net.TCPAddr).Port,
+		Repo: repo,
+	}
+
+	go func() {
+		srv.Serve(l)
+	}()
+
+	return s, func() {
+		srv.Shutdown(context.Background())
+	}
+}
+
+var configContents = `[core]
+  bare = true
+[http]
+  receivepack = true
+`
+
+func CreateRemote(t *testing.T, repo *git.Repository, s *server) {
+	_, err := repo.CreateRemote(&config.RemoteConfig{
+		Name: "origin",
+		URLs: []string{fmt.Sprintf("http://localhost:%d", s.Port)},
+	})
+	if err != nil {
+		t.Fatalf("call=CreateRemote err=`%v`\n", err)
 	}
 }
 

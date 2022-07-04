@@ -5,6 +5,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"html/template"
 	"io"
 	"log"
@@ -187,11 +188,13 @@ func Rebase(_ Flags) int {
 func Push(_ Flags) int {
 	repo, _, err := openWorkTree()
 	if err != nil {
+		log.Printf("call=openWorkTree err=`%v`\n", err)
 		return ErrNotRepository
 	}
 
 	parts, err := headParts(repo)
 	if err != nil {
+		log.Printf("call=headParts err=`%v`\n", err)
 		return ErrHead
 	}
 	if len(parts) != 4 {
@@ -199,13 +202,38 @@ func Push(_ Flags) int {
 		return ErrInvalidStack
 	}
 
-	spec := config.RefSpec(fmt.Sprintf("refs/head/%[1]s/*:refs/heads/%[1]s/*", parts[stackName]))
-	err = repo.Push(&git.PushOptions{
-		RemoteName: "origin",
+	remotes, err := repo.Remotes()
+	if err != nil {
+		log.Printf("call=Remotes err=`%v`\n", err)
+		return ErrInvalidStack
+	}
+
+	for _, r := range remotes {
+		log.Printf("%v\n", r)
+	}
+
+	authcb, err := ssh.NewSSHAgentAuth("git")
+	if err != nil {
+		log.Printf("call=Split err=`want 4 parts, got %d`\n", len(parts))
+		return ErrInvalidStack
+	}
+
+	origin, err := repo.Remote("origin")
+	if err != nil {
+		log.Printf("call=Remotes err=`%v`\n", err)
+		return ErrInvalidStack
+	}
+
+	spec := config.RefSpec(fmt.Sprintf("refs/heads/%[1]s/*:refs/heads/%[1]s/*", parts[stackName]))
+	err = origin.Push(&git.PushOptions{
+		Auth:       authcb,
+		Force:      true,
 		Progress:   os.Stdout,
+		RemoteName: "origin",
 		RefSpecs:   []config.RefSpec{spec},
 	})
 	if err != nil {
+		log.Printf("call=Push spec=%v err=`%v`\n", spec, err)
 		return ErrPushingStack
 	}
 	return Success

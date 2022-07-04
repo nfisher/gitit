@@ -90,7 +90,8 @@ func Version(w io.Writer) int {
 			rev = s.Value
 		}
 	}
-	log.Printf("gitit@%v isDirty=%v\n", rev, isDirty)
+	fmt.Fprintf(w, "gitit@%v isDirty=%v\n", rev, isDirty)
+
 	return Success
 }
 
@@ -149,6 +150,7 @@ func Branch(input Flags) int {
 	err = wt.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.NewBranchReferenceName(name),
 		Create: true,
+		Keep:   true,
 	})
 	if err != nil {
 		log.Printf("call=Checkout err=`%v`\n", err)
@@ -202,16 +204,6 @@ func Push(_ Flags) int {
 		return ErrInvalidStack
 	}
 
-	remotes, err := repo.Remotes()
-	if err != nil {
-		log.Printf("call=Remotes err=`%v`\n", err)
-		return ErrInvalidStack
-	}
-
-	for _, r := range remotes {
-		log.Printf("%v\n", r)
-	}
-
 	authcb, err := ssh.NewSSHAgentAuth("git")
 	if err != nil {
 		log.Printf("call=Split err=`want 4 parts, got %d`\n", len(parts))
@@ -229,11 +221,14 @@ func Push(_ Flags) int {
 		log.Printf("call=Push spec=%v err=`%v`\n", spec, err)
 		return ErrPushingStack
 	}
+	// TODO: Open PR's.
+
 	return Success
 }
 
 func Checkout(input Flags) int {
 	if input.BranchName == "" {
+		log.Printf("call=Checkout err=`branch name empty`\n")
 		return ErrMissingArguments
 	}
 
@@ -281,32 +276,6 @@ func Checkout(input Flags) int {
 	}
 
 	return Success
-}
-
-func headParts(repo *git.Repository) ([]string, error) {
-	ref, err := repo.Head()
-	if err != nil {
-		// TODO: how do we get here? Detached head?
-		log.Printf("call=Head err=`%v`\n", err)
-		return nil, err
-	}
-	return splitRef(ref), nil
-}
-
-func openWorkTree() (*git.Repository, *git.Worktree, error) {
-	repo, err := git.PlainOpenWithOptions(".", &git.PlainOpenOptions{DetectDotGit: true})
-	if err == git.ErrRepositoryNotExists {
-		log.Printf("call=PlainOpen err=`%v`\n", err)
-		return nil, nil, err
-	}
-
-	wt, err := repo.Worktree()
-	if err != nil {
-		log.Printf("call=WorkTree err=`%v`\n", err)
-		return nil, nil, err
-	}
-
-	return repo, wt, nil
 }
 
 func Init(input Flags) int {
@@ -401,6 +370,32 @@ func Status(_ Flags, w io.Writer) int {
 
 func isCurrentStack(p []string, cur []string) bool {
 	return len(p) == 4 && p[stackName] == cur[stackName]
+}
+
+func headParts(repo *git.Repository) ([]string, error) {
+	ref, err := repo.Head()
+	if err != nil {
+		// TODO: how do we get here? Detached head?
+		log.Printf("call=Head err=`%v`\n", err)
+		return nil, err
+	}
+	return splitRef(ref), nil
+}
+
+func openWorkTree() (*git.Repository, *git.Worktree, error) {
+	repo, err := git.PlainOpenWithOptions(".", &git.PlainOpenOptions{DetectDotGit: true})
+	if err == git.ErrRepositoryNotExists {
+		log.Printf("call=PlainOpen err=`%v`\n", err)
+		return nil, nil, err
+	}
+
+	wt, err := repo.Worktree()
+	if err != nil {
+		log.Printf("call=WorkTree err=`%v`\n", err)
+		return nil, nil, err
+	}
+
+	return repo, wt, nil
 }
 
 var stackTpl = template.Must(template.New("stack").Parse(`In stack {{ .Name }}

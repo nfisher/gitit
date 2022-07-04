@@ -47,3 +47,17 @@ func Test_branch_fails_with_no_name_specified(t *testing.T) {
 	assert.Int(t, i).Equals(ErrMissingArguments)
 	assert.Repo(t, repo).Branch("kb1234/003_ui")
 }
+
+func Test_branch_returns_success_with_dirty_branch(t *testing.T) {
+	repo, repoclose := CreateRepo(t)
+	defer repoclose()
+
+	CreateThreeLayerStack(t, repo)
+	CreateFile(t, ".gitignore", "*.sw?\n.idea")
+
+	i := Exec(Flags{SubCommand: "branch", BranchName: "update_ignore"}, io.Discard)
+
+	assert.Int(t, i).Equals(Success)
+	assert.Repo(t, repo).Branch("kb1234/004_update_ignore")
+	assert.Exists(t, ".gitignore")
+}

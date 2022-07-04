@@ -25,7 +25,7 @@ Initial [post](https://junctionbox.ca/2022/06/22/stacked-commits.html).
 ## Remote Git
 
 * [ ] Pull
-* [ ] Push
+* [x] Push
 * [ ] Status
 
 ### Maybe

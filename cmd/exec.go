@@ -175,8 +175,16 @@ These are common Stack commands used in various situations:
 start a new stack
    init       Create a new stack
 
-examine the state
+examine the stack state
    status     Show the stack status
+
+grow, mark and tweak your stack
+   branch     Create a new stack branch
+   checkout   Switch branches within the stack using the index ID
+
+collaborate
+   pull       Fetch stack from and integrate with a local stack
+   push       Update remote refs for stack along with associated objects
 `))
 }
 

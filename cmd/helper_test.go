@@ -153,6 +153,7 @@ func InitStack(t *testing.T, repo *git.Repository, stack, branch string) {
 }
 
 func SkipWIP(t *testing.T, runWip bool) {
+	t.Helper()
 	if !runWip {
 		t.Skip("WIP")
 	}

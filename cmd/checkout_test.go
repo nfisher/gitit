@@ -42,6 +42,7 @@ func Test_checkout_returns_not_found_with_invalid_stack(t *testing.T) {
 	defer repoclose()
 
 	InitialCommit(t, repo)
+
 	i := Exec(Flags{SubCommand: "checkout", BranchName: "002"}, io.Discard)
 	assert.Int(t, i).Equals(ErrInvalidStack)
 	assert.Repo(t, repo).Branch("master")
@@ -52,6 +53,7 @@ func Test_checkout_returns_missing_args_with_no_branch_id(t *testing.T) {
 	defer repoclose()
 
 	InitialCommit(t, repo)
+
 	i := Exec(Flags{SubCommand: "checkout"}, io.Discard)
 	assert.Int(t, i).Equals(ErrMissingArguments)
 }

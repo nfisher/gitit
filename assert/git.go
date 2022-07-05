@@ -22,7 +22,7 @@ func Remote(t *testing.T, s string) *gitremote {
 
 func (rem *gitremote) IncludesBranches(branches ...string) {
 	rem.t.Helper()
-	remoteBranches := rem.remoteBranches(branches)
+	remoteBranches := rem.remoteBranches()
 
 	sort.Strings(remoteBranches)
 	remoteList := strings.Join(remoteBranches, "\n")
@@ -40,7 +40,7 @@ func (rem *gitremote) IncludesBranches(branches ...string) {
 
 func (rem *gitremote) ExcludesBranches(branches ...string) {
 	rem.t.Helper()
-	remoteList := rem.remoteBranches(branches)
+	remoteList := rem.remoteBranches()
 
 	var m = map[string]bool{}
 	for _, r := range remoteList {
@@ -54,7 +54,7 @@ func (rem *gitremote) ExcludesBranches(branches ...string) {
 	}
 }
 
-func (rem *gitremote) remoteBranches(branches []string) []string {
+func (rem *gitremote) remoteBranches() []string {
 	remote := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
 		Name: "origin",
 		URLs: []string{rem.s},

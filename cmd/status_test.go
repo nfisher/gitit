@@ -26,7 +26,7 @@ func Test_status_on_branch_returns_success(t *testing.T) {
 const smallStack = `In stack kb1234
 On branch kb1234/003_ui
 
-Stack:
+Local Stack:
     001_docs
     002_api
     003_ui
@@ -51,3 +51,33 @@ func Test_status_returns_not_repository_with_empty_directory(t *testing.T) {
 	i := Exec(Flags{SubCommand: "status"}, io.Discard)
 	assert.Int(t, i).Equals(ErrNotRepository)
 }
+
+func Test_status_with_default_remote_successful(t *testing.T) {
+	SkipWIP(t, *runWip)
+	server, srvclose := LaunchServer(t)
+	defer srvclose()
+
+	repo, repoclose := CreateRepo(t)
+	defer repoclose()
+
+	CreateThreeLayerStack(t, repo)
+	CreateRemote(t, repo, server)
+
+	PushBranch(t, repo, "kb1234/001_docs")
+	PushBranch(t, repo, "kb1234/002_api")
+
+	var buf bytes.Buffer
+	i := Exec(Flags{SubCommand: "status"}, &buf)
+	assert.Int(t, i).Equals(Success)
+	assert.String(t, string(buf.Bytes())).Equals(remoteStack)
+}
+
+const remoteStack = `In stack kb1234
+On branch kb1234/003_ui
+Remote origin
+
+Local Stack (+ ahead, = same, ∇ diverged):
+    (=) 001_docs
+    (=) 002_api
+    (+) 003_ui
+`

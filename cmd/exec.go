@@ -334,9 +334,10 @@ func Init(input Flags) int {
 }
 
 type Stack struct {
-	Name     string
 	Branch   string
-	Branches []string
+	Branches branches
+	Name     string
+	Remote   string
 }
 
 func Status(_ Flags, w io.Writer) int {
@@ -357,11 +358,12 @@ func Status(_ Flags, w io.Writer) int {
 			log.Printf("call=Branches err=`%v`\n", err)
 			return ErrOutputWriter
 		}
-		var a []string
+		var b branches
 		err = iter.ForEach(func(reference *plumbing.Reference) error {
 			p := splitRef(reference)
 			if isCurrentStack(p, parts) {
-				a = append(a, p[3])
+				var status = ""
+				b = append(b, branch{Name: p[3], Status: status})
 			}
 			return nil
 		})
@@ -369,11 +371,12 @@ func Status(_ Flags, w io.Writer) int {
 			log.Printf("call=Branches err=`%v`\n", err)
 			return ErrOutputWriter
 		}
-		sort.Strings(a)
+		sort.Sort(b)
+
 		stack := &Stack{
 			Name:     parts[2],
 			Branch:   parts[3],
-			Branches: a,
+			Branches: b,
 		}
 		err = stackTpl.Execute(w, stack)
 		if err != nil {
@@ -392,6 +395,25 @@ func Status(_ Flags, w io.Writer) int {
 	}
 
 	return Success
+}
+
+type branch struct {
+	Name   string
+	Status string
+}
+
+type branches []branch
+
+func (b branches) Swap(i, j int) {
+	b[i], b[j] = b[j], b[i]
+}
+
+func (b branches) Len() int {
+	return len(b)
+}
+
+func (b branches) Less(i, j int) bool {
+	return b[i].Name < b[j].Name
 }
 
 func isCurrentStack(p []string, cur []string) bool {
@@ -426,10 +448,11 @@ func openWorkTree() (*git.Repository, *git.Worktree, error) {
 
 var stackTpl = template.Must(template.New("stack").Parse(`In stack {{ .Name }}
 On branch {{ .Name }}/{{ .Branch }}
-
-Stack:
+{{ if .Remote }}Remote {{ .Remote }}
+{{ end }}
+Local Stack{{ if .Remote }} (+ ahead, = same, ∇ diverged){{ end }}:
 {{- range .Branches }}
-    {{ . }}{{ end }}
+    {{ if .Status }}({{.Status}}) {{ end }}{{ .Name }}{{ end }}
 `))
 
 const simpleBranch = `Not in a stack

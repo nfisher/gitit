@@ -7,7 +7,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
-	"html/template"
+	"github.com/go-git/go-git/v5/storage/memory"
 	"io"
 	"log"
 	"os"
@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"text/template"
 )
 
 type Flags struct {
@@ -353,6 +354,30 @@ func Status(_ Flags, w io.Writer) int {
 	}
 
 	if len(parts) == 4 {
+		var defaultRemote *config.RemoteConfig
+		remotes, err := repo.Remotes()
+		if err != nil {
+			log.Printf("call=Remotes err=`%v`\n", err)
+			return ErrOutputWriter
+		}
+		var remoteShas = map[string]string{}
+		if len(remotes) > 0 {
+			defaultRemote = remotes[0].Config()
+			remote := git.NewRemote(memory.NewStorage(), defaultRemote)
+			refs, err := remote.List(&git.ListOptions{})
+			if err != nil {
+				log.Printf("call=List err=`%v`\n", err)
+				return ErrOutputWriter
+			}
+			var prefix = strings.Join(parts[:3], "/")
+			for _, r := range refs {
+				s := r.Name().String()
+				if strings.HasPrefix(s, prefix) {
+					remoteShas[s] = r.Hash().String()
+				}
+			}
+		}
+
 		iter, err := repo.Branches()
 		if err != nil {
 			log.Printf("call=Branches err=`%v`\n", err)
@@ -361,8 +386,17 @@ func Status(_ Flags, w io.Writer) int {
 		var b branches
 		err = iter.ForEach(func(reference *plumbing.Reference) error {
 			p := splitRef(reference)
+			s := reference.Name().String()
 			if isCurrentStack(p, parts) {
 				var status = ""
+				if len(remoteShas) > 0 {
+					sha, ok := remoteShas[s]
+					if !ok {
+						status = "+"
+					} else if sha == reference.Hash().String() {
+						status = "="
+					}
+				}
 				b = append(b, branch{Name: p[3], Status: status})
 			}
 			return nil
@@ -377,6 +411,9 @@ func Status(_ Flags, w io.Writer) int {
 			Name:     parts[2],
 			Branch:   parts[3],
 			Branches: b,
+		}
+		if defaultRemote != nil {
+			stack.Remote = defaultRemote.Name
 		}
 		err = stackTpl.Execute(w, stack)
 		if err != nil {
@@ -452,7 +489,7 @@ On branch {{ .Name }}/{{ .Branch }}
 {{ end }}
 Local Stack{{ if .Remote }} (+ ahead, = same, ∇ diverged){{ end }}:
 {{- range .Branches }}
-    {{ if .Status }}({{.Status}}) {{ end }}{{ .Name }}{{ end }}
+    {{ if .Status }}({{ .Status }}) {{ end }}{{ .Name }}{{ end }}
 `))
 
 const simpleBranch = `Not in a stack

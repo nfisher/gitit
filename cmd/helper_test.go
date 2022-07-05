@@ -244,3 +244,16 @@ func CreateThreeLayerStack(t *testing.T, repo *git.Repository) {
 	CreateBranch(t, repo, "kb1234", "003_ui")
 	Commit(t, wt, map[string]string{"ui.js": "function ui() {}"}, "Add ui.js")
 }
+
+func PushBranch(t *testing.T, repo *git.Repository, branchName string) {
+	t.Helper()
+	spec := config.RefSpec(fmt.Sprintf("refs/heads/%[1]s:refs/heads/%[1]s", branchName))
+	err := repo.Push(&git.PushOptions{
+		Progress:   os.Stdout,
+		RemoteName: "origin",
+		RefSpecs:   []config.RefSpec{spec},
+	})
+	if err != nil {
+		t.Fatalf("call=Push err=`%v`\n", err)
+	}
+}

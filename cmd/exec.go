@@ -395,6 +395,14 @@ func Status(_ Flags, w io.Writer) int {
 						status = "+"
 					} else if sha == reference.Hash().String() {
 						status = "="
+					} else {
+						// TODO: change to walk branch for now test for presence in local repo.
+						_, err := repo.CommitObject(plumbing.NewHash(sha))
+						if err != nil {
+							status = "∇"
+						} else {
+							status = "+"
+						}
 					}
 				}
 				b = append(b, branch{Name: p[3], Status: status})

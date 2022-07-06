@@ -80,30 +80,59 @@ Local Stack (+ ahead, = same, ∇ diverged):
 }
 
 func Test_status_with_diverged_remote_successful(t *testing.T) {
-	SkipWIP(t, *runWip)
-	server, srvclose := LaunchServer(t)
-	defer srvclose()
-
-	repo, repoclose := CreateRepo(t)
-	defer repoclose()
-
-	// TODO: Create 2 repos and interleave a timeline of pushes as follows:
+	// Create 2 workspaces and interleave a timeline of pushes as follows:
 	// 1. A - initial push 001,002,003.
 	// 2. B - pull 001, 002, 003.
 	// 3. A - push change 002.
 	// 4. B - push change 003.
 
-	CreateThreeLayerStack(t, repo)
-	CreateRemote(t, repo, server)
+	server, srvclose := LaunchServer(t)
+	defer srvclose()
 
-	PushBranch(t, repo, "kb1234/001_docs")
-	PushBranch(t, repo, "kb1234/002_api")
+	repo1, r1close := CreateRepo(t)
+	defer r1close()
 
-	var buf bytes.Buffer
-	i := Exec(Flags{SubCommand: "status"}, &buf)
+	wt1 := WorkTree(t, repo1)
+
+	CreateThreeLayerStack(t, repo1)
+	CreateRemote(t, repo1, server)
+
+	PushBranch(t, repo1, "kb1234/001_docs")
+	PushBranch(t, repo1, "kb1234/002_api")
+	PushBranch(t, repo1, "kb1234/003_ui")
+
+	CheckoutBranch(t, wt1, "kb1234/002_api")
+	Commit(t, wt1, map[string]string{"api.js": "function api() { return true; }"}, "Update api.js")
+
+	repo2, r2close := CloneRepo(t, server, "kb1234/003_ui")
+	defer r2close()
+
+	FetchRefs(t, repo2, "kb1234/*")
+
+	wt2 := WorkTree(t, repo2)
+	Commit(t, wt2, map[string]string{"ui.js": "function ui() { return true; }"}, "Update ui.js")
+
+	var buf2 bytes.Buffer
+	i := Exec(Flags{SubCommand: "status"}, &buf2)
 	assert.Int(t, i).Equals(Success)
-	assert.String(t, string(buf.Bytes())).Equals(`In stack kb1234
+	assert.String(t, string(buf2.Bytes())).Equals(`In stack kb1234
 On branch kb1234/003_ui
+Remote origin
+
+Local Stack (+ ahead, = same, ∇ diverged):
+    (=) 001_docs
+    (=) 002_api
+    (+) 003_ui
+`)
+	PushBranch(t, repo2, "kb1234/003_ui")
+
+	Chdir(t, wt1)
+
+	var buf1 bytes.Buffer
+	i = Exec(Flags{SubCommand: "status"}, &buf1)
+	assert.Int(t, i).Equals(Success)
+	assert.String(t, string(buf1.Bytes())).Equals(`In stack kb1234
+On branch kb1234/002_api
 Remote origin
 
 Local Stack (+ ahead, = same, ∇ diverged):

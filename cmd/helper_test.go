@@ -250,11 +250,70 @@ func PushBranch(t *testing.T, repo *git.Repository, branchName string) {
 	t.Helper()
 	spec := config.RefSpec(fmt.Sprintf("refs/heads/%[1]s:refs/heads/%[1]s", branchName))
 	err := repo.Push(&git.PushOptions{
-		Progress:   os.Stdout,
 		RemoteName: "origin",
 		RefSpecs:   []config.RefSpec{spec},
 	})
 	if err != nil {
 		t.Fatalf("call=Push err=`%v`\n", err)
+	}
+}
+
+func CheckoutBranch(t *testing.T, wt *git.Worktree, name string) {
+	t.Helper()
+	err := wt.Checkout(&git.CheckoutOptions{
+		Branch: plumbing.NewBranchReferenceName(name),
+	})
+	if err != nil {
+		t.Fatalf("call=Checkout err=`%v`\n", err)
+	}
+}
+
+func Chdir(t *testing.T, wt *git.Worktree) {
+	t.Helper()
+
+	err := os.Chdir(wt.Filesystem.Root())
+	if err != nil {
+		t.Fatalf("call=Chdir err=`%v`\n", err)
+	}
+}
+
+func CloneRepo(t *testing.T, s *server, name string) (*git.Repository, func()) {
+	t.Helper()
+
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("call=Getwd err=`%v`\n", err)
+	}
+
+	dir := t.TempDir()
+	err = os.Chdir(dir)
+	if err != nil {
+		t.Fatalf("call=Chdir err=`%v`\n", err)
+	}
+
+	repo, err := git.PlainClone(dir, false, &git.CloneOptions{
+		RemoteName:    "origin",
+		URL:           s.Address(),
+		ReferenceName: plumbing.ReferenceName("refs/heads/" + name),
+	})
+	if err != nil {
+		t.Fatalf("call=PlainClone err=`%v`\n", err)
+	}
+
+	return repo, func() {
+		os.Chdir(pwd)
+		os.RemoveAll(dir)
+	}
+}
+
+func FetchRefs(t *testing.T, repo *git.Repository, refs string) {
+	t.Helper()
+	spec := config.RefSpec(fmt.Sprintf("refs/heads/%[1]s:refs/heads/%[1]s", refs))
+	err := repo.Fetch(&git.FetchOptions{
+		RemoteName: "origin",
+		RefSpecs:   []config.RefSpec{spec},
+	})
+	if err != nil {
+		t.Fatalf("call=Fetch err=`%v`\n", err)
 	}
 }

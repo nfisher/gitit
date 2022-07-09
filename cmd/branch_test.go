@@ -11,7 +11,7 @@ func Test_branch_outside_repo_should_fail(t *testing.T) {
 	tdclose := CreateBareDir(t)
 	defer tdclose()
 
-	i := Exec(Flags{SubCommand: "branch", BranchName: "ml_fairy"}, io.Discard)
+	i := Exec(Flags{SubCommand: "branch", Name: "ml_fairy"}, io.Discard)
 	assert.Int(t, i).Equals(ErrNotRepository)
 }
 
@@ -21,7 +21,7 @@ func Test_branch_on_existing_stack_returns_success(t *testing.T) {
 
 	CreateThreeLayerStack(t, repo)
 
-	i := Exec(Flags{SubCommand: "branch", BranchName: "ml_fairy"}, io.Discard)
+	i := Exec(Flags{SubCommand: "branch", Name: "ml_fairy"}, io.Discard)
 	assert.Int(t, i).Equals(Success)
 	assert.Repo(t, repo).Branch("kb1234/004_ml_fairy")
 }
@@ -32,7 +32,7 @@ func Test_branch_on_invalid_stack_fails(t *testing.T) {
 
 	InitialCommit(t, repo)
 
-	i := Exec(Flags{SubCommand: "branch", BranchName: "ml_fairy"}, io.Discard)
+	i := Exec(Flags{SubCommand: "branch", Name: "ml_fairy"}, io.Discard)
 	assert.Int(t, i).Equals(ErrInvalidStack)
 	assert.Repo(t, repo).Branch("master")
 }
@@ -55,7 +55,7 @@ func Test_branch_returns_success_with_dirty_branch(t *testing.T) {
 	CreateThreeLayerStack(t, repo)
 	CreateFile(t, ".gitignore", "*.sw?\n.idea")
 
-	i := Exec(Flags{SubCommand: "branch", BranchName: "update_ignore"}, io.Discard)
+	i := Exec(Flags{SubCommand: "branch", Name: "update_ignore"}, io.Discard)
 
 	assert.Int(t, i).Equals(Success)
 	assert.Repo(t, repo).Branch("kb1234/004_update_ignore")

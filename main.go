@@ -13,7 +13,7 @@ func main() {
 	}
 
 	if len(os.Args) > 2 {
-		input.BranchName = os.Args[2]
+		input.Name = os.Args[2]
 	}
 
 	os.Exit(cmd.Exec(input, os.Stdout))

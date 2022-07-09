@@ -11,7 +11,7 @@ func Test_checkout_outside_repo_should_fail(t *testing.T) {
 	tdclose := CreateBareDir(t)
 	defer tdclose()
 
-	i := Exec(Flags{SubCommand: "checkout", BranchName: "001"}, io.Discard)
+	i := Exec(Flags{SubCommand: "checkout", Name: "001"}, io.Discard)
 	assert.Int(t, i).Equals(ErrNotRepository)
 }
 
@@ -21,7 +21,7 @@ func Test_checkout_returns_unknown_branch_with_absent_branch_id(t *testing.T) {
 
 	CreateThreeLayerStack(t, repo)
 
-	i := Exec(Flags{SubCommand: "checkout", BranchName: "004"}, io.Discard)
+	i := Exec(Flags{SubCommand: "checkout", Name: "004"}, io.Discard)
 	assert.Int(t, i).Equals(ErrUnknownBranch)
 	assert.Repo(t, repo).Branch("kb1234/003_ui")
 }
@@ -32,7 +32,7 @@ func Test_checkout_returns_success_with_known_branch_id(t *testing.T) {
 
 	CreateThreeLayerStack(t, repo)
 
-	i := Exec(Flags{SubCommand: "checkout", BranchName: "001"}, io.Discard)
+	i := Exec(Flags{SubCommand: "checkout", Name: "001"}, io.Discard)
 	assert.Int(t, i).Equals(Success)
 	assert.Repo(t, repo).Branch("kb1234/001_docs")
 }
@@ -43,7 +43,7 @@ func Test_checkout_returns_not_found_with_invalid_stack(t *testing.T) {
 
 	InitialCommit(t, repo)
 
-	i := Exec(Flags{SubCommand: "checkout", BranchName: "002"}, io.Discard)
+	i := Exec(Flags{SubCommand: "checkout", Name: "002"}, io.Discard)
 	assert.Int(t, i).Equals(ErrInvalidStack)
 	assert.Repo(t, repo).Branch("master")
 }

@@ -20,7 +20,7 @@ import (
 
 type Flags struct {
 	SubCommand string
-	BranchName string
+	Name       string
 }
 
 const (
@@ -98,8 +98,8 @@ func Version(w io.Writer) int {
 }
 
 func Branch(input Flags) int {
-	if input.BranchName == "" {
-		log.Printf("call=BranchName err=`branch name is empty, must be specified`\n")
+	if input.Name == "" {
+		log.Printf("call=Name err=`branch name is empty, must be specified`\n")
 		return ErrMissingArguments
 	}
 
@@ -115,29 +115,25 @@ func Branch(input Flags) int {
 		return ErrHead
 	}
 
-	if len(parts) != 4 {
+	if !isStack(parts) {
 		log.Printf("call=Split err=`want 4 parts, got %d`\n", len(parts))
 		return ErrInvalidStack
 	}
 
-	iter, err := repo.Branches()
-	if err != nil {
-		log.Printf("call=Branches err=`%v`\n", err)
-		return ErrOutputWriter
-	}
-
 	var a []string
-	err = iter.ForEach(func(reference *plumbing.Reference) error {
+	fn := func(reference *plumbing.Reference) error {
 		p := splitRef(reference)
 		if len(p) == 4 && p[stackName] == parts[stackName] {
 			a = append(a, p[stackBranch])
 		}
 		return nil
-	})
-	if err != nil {
-		log.Printf("call=Branches err=`%v`\n", err)
-		return ErrOutputWriter
 	}
+
+	err = branchesApply(repo, fn)
+	if err != nil {
+		return ErrUnknownBranch
+	}
+
 	sort.Strings(a)
 
 	last := a[len(a)-1][:3]
@@ -147,7 +143,7 @@ func Branch(input Flags) int {
 		return ErrInvalidSequence
 	}
 
-	name := fmt.Sprintf("%s/%03d_%s", parts[stackName], i+1, input.BranchName)
+	name := fmt.Sprintf("%s/%03d_%s", parts[stackName], i+1, input.Name)
 
 	err = wt.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.NewBranchReferenceName(name),
@@ -161,6 +157,24 @@ func Branch(input Flags) int {
 
 	fmt.Println("Created branch", name)
 	return Success
+}
+
+func branchesApply(repo *git.Repository, fn func(reference *plumbing.Reference) error) error {
+	iter, err := repo.Branches()
+	if err != nil {
+		return fmt.Errorf("call=Branches err=`%w`", err)
+	}
+
+	err = iter.ForEach(fn)
+	if err != nil {
+		return fmt.Errorf("call=ForEach err=`%w`", err)
+	}
+
+	return nil
+}
+
+func isStack(parts []string) bool {
+	return len(parts) == 4
 }
 
 func splitRef(reference *plumbing.Reference) []string {
@@ -209,7 +223,7 @@ func Push(_ Flags) int {
 		log.Printf("call=headParts err=`%v`\n", err)
 		return ErrHead
 	}
-	if len(parts) != 4 {
+	if !isStack(parts) {
 		log.Printf("call=Split err=`want 4 parts, got %d`\n", len(parts))
 		return ErrInvalidStack
 	}
@@ -254,7 +268,7 @@ func Push(_ Flags) int {
 }
 
 func Checkout(input Flags) int {
-	if input.BranchName == "" {
+	if input.Name == "" {
 		log.Printf("call=Checkout err=`branch name empty`\n")
 		return ErrMissingArguments
 	}
@@ -268,31 +282,27 @@ func Checkout(input Flags) int {
 	if err != nil {
 		return ErrHead
 	}
-	if len(parts) != 4 {
+	if !isStack(parts) {
 		log.Printf("call=Split err=`want 4 parts, got %d`\n", len(parts))
 		return ErrInvalidStack
 	}
 
-	iter, err := repo.Branches()
-	if err != nil {
-		log.Printf("call=Branches err=`%v`\n", err)
-		return ErrOutputWriter
-	}
 	var target = ""
-	err = iter.ForEach(func(reference *plumbing.Reference) error {
+	fn := func(reference *plumbing.Reference) error {
 		p := splitRef(reference)
-		if len(p) == 4 && p[stackName] == parts[stackName] && strings.HasPrefix(p[stackBranch], input.BranchName) {
+		if isCurrentStack(p, parts) && strings.HasPrefix(p[stackBranch], input.Name) {
 			target = strings.Join(p[stackName:], "/")
 		}
 		return nil
-	})
+	}
+
+	err = branchesApply(repo, fn)
 	if err != nil {
-		log.Printf("call=ForEach err=`%v`\n", err)
 		return ErrOutputWriter
 	}
 
 	if target == "" {
-		log.Printf("call=ForEach err=`%v not found`\n", input.BranchName)
+		log.Printf("call=ForEach err=`%v not found`\n", input.Name)
 		return ErrUnknownBranch
 	}
 
@@ -306,7 +316,7 @@ func Checkout(input Flags) int {
 }
 
 func Init(input Flags) int {
-	if input.BranchName == "" {
+	if input.Name == "" {
 		return ErrMissingArguments
 	}
 
@@ -315,7 +325,7 @@ func Init(input Flags) int {
 		return ErrNotRepository
 	}
 
-	parts := strings.Split(input.BranchName, "/")
+	parts := strings.Split(input.Name, "/")
 	if len(parts) != 2 {
 		log.Printf("call=Split err=`%v`\n", err)
 		return ErrInvalidArgument
@@ -353,7 +363,7 @@ func Status(_ Flags, w io.Writer) int {
 		return ErrHead
 	}
 
-	if len(parts) == 4 {
+	if isStack(parts) {
 		var defaultRemote *config.RemoteConfig
 		remotes, err := repo.Remotes()
 		if err != nil {
@@ -378,13 +388,8 @@ func Status(_ Flags, w io.Writer) int {
 			}
 		}
 
-		iter, err := repo.Branches()
-		if err != nil {
-			log.Printf("call=Branches err=`%v`\n", err)
-			return ErrOutputWriter
-		}
 		var b branches
-		err = iter.ForEach(func(reference *plumbing.Reference) error {
+		fn := func(reference *plumbing.Reference) error {
 			p := splitRef(reference)
 			s := reference.Name().String()
 			if isCurrentStack(p, parts) {
@@ -408,11 +413,13 @@ func Status(_ Flags, w io.Writer) int {
 				b = append(b, branch{Name: p[3], Status: status})
 			}
 			return nil
-		})
+		}
+
+		err = branchesApply(repo, fn)
 		if err != nil {
-			log.Printf("call=Branches err=`%v`\n", err)
 			return ErrOutputWriter
 		}
+
 		sort.Sort(b)
 
 		stack := &Stack{
@@ -462,7 +469,7 @@ func (b branches) Less(i, j int) bool {
 }
 
 func isCurrentStack(p []string, cur []string) bool {
-	return len(p) == 4 && p[stackName] == cur[stackName]
+	return isStack(p) && p[stackName] == cur[stackName]
 }
 
 func headParts(repo *git.Repository) ([]string, error) {

@@ -16,7 +16,7 @@ func Test_init_outside_repo_should_fail(t *testing.T) {
 	tdclose := CreateBareDir(t)
 	defer tdclose()
 
-	i := Exec(Flags{SubCommand: "init", BranchName: "123/migration"}, io.Discard)
+	i := Exec(Flags{SubCommand: "init", Name: "123/migration"}, io.Discard)
 	assert.Int(t, i).Equals(ErrNotRepository)
 }
 
@@ -25,7 +25,7 @@ func Test_init_returns_success_with_branch_specified(t *testing.T) {
 	defer repoclose()
 	InitialCommit(t, repo)
 
-	i := Exec(Flags{SubCommand: "init", BranchName: "123/migration"}, io.Discard)
+	i := Exec(Flags{SubCommand: "init", Name: "123/migration"}, io.Discard)
 	assert.Int(t, i).Equals(Success)
 	assert.Repo(t, repo).Branch("123/001_migration")
 }
@@ -35,7 +35,7 @@ func Test_init_returns_failure_with_invalid_branch_specification(t *testing.T) {
 	defer repoclose()
 	InitialCommit(t, repo)
 
-	i := Exec(Flags{SubCommand: "init", BranchName: "migration"}, io.Discard)
+	i := Exec(Flags{SubCommand: "init", Name: "migration"}, io.Discard)
 	assert.Int(t, i).Equals(ErrInvalidArgument)
 }
 
@@ -46,7 +46,7 @@ func Test_init_returns_success_with_dirty_branch(t *testing.T) {
 	InitialCommit(t, repo)
 	CreateFile(t, ".gitignore", "*.sw?\n.idea")
 
-	i := Exec(Flags{SubCommand: "init", BranchName: "123/migration"}, io.Discard)
+	i := Exec(Flags{SubCommand: "init", Name: "123/migration"}, io.Discard)
 
 	assert.Int(t, i).Equals(Success)
 	assert.Repo(t, repo).Branch("123/001_migration")

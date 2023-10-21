@@ -20,7 +20,7 @@ Initial [post](https://junctionbox.ca/2022/06/22/stacked-commits.html).
 
 ### Maybe
 
-* [ ] Squash - racking squashed merges might be adequate.
+* [ ] Squash - tracking squashed merges might be adequate.
 
 ## Remote Git
 

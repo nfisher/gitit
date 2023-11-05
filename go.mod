@@ -3,7 +3,7 @@ module github.com/nfisher/gitit
 go 1.20
 
 require (
-	github.com/go-git/go-git/v5 v5.9.0
+	github.com/go-git/go-git/v5 v5.10.0
 	github.com/google/go-cmp v0.6.0
 )
 
